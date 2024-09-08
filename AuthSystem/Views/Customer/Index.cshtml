@@ -1,5 +1,27 @@
 ﻿@model IEnumerable<AuthSystem.DbModel.CustomerInfo>
 
+<style>
+    table.dataTable thead th {
+        position: relative;
+        padding-right: 30px;
+    }
+
+        table.dataTable thead th.sorting:after {
+            content: "\f0dc"; /* FontAwesome sorting icon */
+            font-family: FontAwesome;
+            position: absolute;
+            right: 10px;
+        }
+
+        table.dataTable thead th.sorting_asc:after {
+            content: "\f0de"; /* FontAwesome ascending icon */
+        }
+
+        table.dataTable thead th.sorting_desc:after {
+            content: "\f0dd"; /* FontAwesome descending icon */
+        }
+
+</style>
 <h1>Customer List</h1>
 
 <button class="btn btn-primary" id="addCustomerBtn">Add New Customer</button>
@@ -37,8 +59,8 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 id="modal-title" class="modal-title">Add New Customer</h5>
-               @*  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                @*  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
                 </button> *@
             </div>
             <div class="modal-body">
@@ -91,16 +113,24 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+
     <script>
         $(document).ready(function () {
 
-            $('#customersTable').DataTable();
+            $('#customersTable').DataTable({
+                "order": [[0, "asc"]],
+                "columnDefs": [
+                    { "orderable": true, "targets": [0, 1, 2, 3] },
+                    { "orderable": false, "targets": [4] }
+                ]
+            });
 
             $('#addCustomerBtn').click(function () {
                 $('#modal-title').text('Add New Customer');
-                $('#addCustomerForm')[0].reset(); 
-                $('#customerId').val(''); 
-                $('#addCustomerForm').attr('action', '@Url.Action("Create")'); 
+                $('#addCustomerForm')[0].reset();
+                $('#customerId').val('');
+                $('#addCustomerForm').attr('action', '@Url.Action("Create")');
                 $('#addCustomerModal').modal('show');
             });
 
@@ -119,7 +149,7 @@
                                 text: item.districtName
                             }));
                         });
-                       
+
                         var selectedDistrictId = $('#customerId').data('districtId');
                         if (selectedDistrictId) {
                             $('#district').val(selectedDistrictId);
@@ -161,7 +191,7 @@
                 });
             });
 
-                
+
             $('#customersTable').on('click', '.delete', function (e) {
                 e.preventDefault();
                 var id = $(this).data('id');
