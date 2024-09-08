@@ -1,0 +1,253 @@
+﻿@model IEnumerable<AuthSystem.DbModel.CustomerInfo>
+
+<h1>Customer List</h1>
+
+<button class="btn btn-primary" id="addCustomerBtn">Add New Customer</button>
+
+<table id="customersTable" class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>State</th>
+            <th>District</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var customer in Model)
+        {
+            <tr>
+                <td>@customer.Name</td>
+                <td>@customer.Gender.GenderName</td>
+                <td>@customer.District.State.StateName</td>
+                <td>@customer.District.DistrictName</td>
+                <td>
+                    <a href="#" class="edit" data-id="@customer.CustomerId">Edit</a>
+                    <a href="#" class="delete" data-id="@customer.CustomerId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Add/Edit Customer Modal -->
+<div id="addCustomerModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="modal-title" class="modal-title">Add New Customer</h5>
+               @*  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button> *@
+            </div>
+            <div class="modal-body">
+                <form id="addCustomerForm">
+                    <input type="hidden" id="customerId" name="CustomerId" />
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name" name="Name" required maxlength="50">
+                        <span id="name-error" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select class="form-control" id="gender" name="GenderId" required>
+                            <option value="">Select Gender</option>
+                            @foreach (var gender in ViewBag.Genders as IEnumerable<SelectListItem>)
+                            {
+                                <option value="@gender.Value">@gender.Text</option>
+                            }
+                        </select>
+                        <span id="gender-error" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State</label>
+                        <select class="form-control" id="state" name="StateId" required>
+                            <option value="">Select State</option>
+                            @foreach (var state in ViewBag.States as IEnumerable<SelectListItem>)
+                            {
+                                <option value="@state.Value">@state.Text</option>
+                            }
+                        </select>
+                        <span id="state-error" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="district">District</label>
+                        <select class="form-control" id="district" name="DistrictId" required>
+                            <option value="">Select District</option>
+                        </select>
+                        <span id="district-error" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function () {
+
+            $('#customersTable').DataTable();
+
+            $('#addCustomerBtn').click(function () {
+                $('#modal-title').text('Add New Customer');
+                $('#addCustomerForm')[0].reset(); 
+                $('#customerId').val(''); 
+                $('#addCustomerForm').attr('action', '@Url.Action("Create")'); 
+                $('#addCustomerModal').modal('show');
+            });
+
+            $('#state').change(function () {
+                var stateId = $(this).val();
+                $.ajax({
+                    url: '@Url.Action("GetDistrictsByState")',
+                    type: 'GET',
+                    data: { stateId: stateId },
+                    success: function (data) {
+                        console.log("District Data", data);
+                        $('#district').empty().append('<option value="">Select District</option>');
+                        $.each(data, function (index, item) {
+                            $('#district').append($('<option>', {
+                                value: item.id,
+                                text: item.districtName
+                            }));
+                        });
+                       
+                        var selectedDistrictId = $('#customerId').data('districtId');
+                        if (selectedDistrictId) {
+                            $('#district').val(selectedDistrictId);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert('An error occurred: ' + xhr.responseText);
+                    }
+                });
+            });
+
+            $('#addCustomerForm').submit(function (e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '@Url.Action("Create")',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function (result) {
+                        if (result.success) {
+                            Swal.fire('Success', 'Customer saved successfully!', 'success').then(function () {
+                                location.reload();
+                            });
+                        } else {
+                            var errors = result.errors;
+                            if (errors) {
+                                Swal.fire('Validation Error',
+                                    'Name: ' + (errors.name ? errors.name[0] : '') + '<br>' +
+                                    'Gender: ' + (errors.genderId ? errors.genderId[0] : '') + '<br>' +
+                                    'State: ' + (errors.stateId ? errors.stateId[0] : '') + '<br>' +
+                                    'District: ' + (errors.districtId ? errors.districtId[0] : ''),
+                                    'error'
+                                );
+                            }
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'An error occurred: ' + xhr.responseText, 'error');
+                    }
+                });
+            });
+
+                
+            $('#customersTable').on('click', '.delete', function (e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'No, keep it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("Delete")',
+                            type: 'POST',
+                            data: { id: id },
+                            success: function (result) {
+                                if (result.success) {
+                                    Swal.fire('Deleted!', 'Customer has been deleted.', 'success').then(function () {
+                                        location.reload();
+                                    });
+                                }
+                            },
+                            error: function (xhr) {
+                                Swal.fire('Error', 'An error occurred: ' + xhr.responseText, 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+
+            $('#customersTable').on('click', '.edit', function (e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                $.ajax({
+                    url: '@Url.Action("Edit", new { id = "__id__" })'.replace('__id__', id),
+                    type: 'GET',
+                    success: function (result) {
+                        if (result.success) {
+                            $('#modal-title').text('Edit Customer');
+                            $('#name').val(result.customer.name);
+                            $('#gender').val(result.customer.genderId);
+                            $('#state').val(result.customer.stateId).change();
+                            $('#customerId').val(result.customer.customerId);
+                            $('#customerId').data('districtId', result.customer.districtId);
+                            $('#addCustomerForm').attr('action', '@Url.Action("Edit")');
+                            $('#addCustomerModal').modal('show');
+                        } else {
+                            Swal.fire('Error', 'Customer not found.', 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'An error occurred: ' + xhr.responseText, 'error');
+                    }
+                });
+            });
+        });
+
+        $('#name').on('input', function () {
+            var value = $(this).val();
+            var regex = /^[A-Za-z\s]*$/; // Regex to allow only alphabets and spaces
+            if (!regex.test(value)) {
+                $(this).val(value.replace(/[^A-Za-z\s]/g, '')); // Remove non-alphabetic characters
+            }
+        });
+
+        $.validator.addMethod('onlyAlphabets', function (value, element) {
+            return this.optional(element) || /^[A-Za-z\s]+$/.test(value);
+        }, 'Please enter only alphabets.');
+
+        $('#addCustomerForm').validate({
+            rules: {
+                Name: {
+                    required: true,
+                    maxlength: 50,
+                    onlyAlphabets: true
+                }
+            },
+            messages: {
+                Name: {
+                    required: "Name is required.",
+                    maxlength: "Name cannot exceed 50 characters.",
+                    onlyAlphabets: "Name can only contain alphabets."
+                }
+            }
+        });
+    </script>
+}

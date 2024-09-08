@@ -1,0 +1,108 @@
+﻿@model AuthSystem.DbModel.CustomerInfo
+
+@{
+    ViewData["Title"] = "Create Customer";
+}
+
+<!-- Create Modal -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createModalLabel">Create Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-group">
+                        <label for="Name">Name</label>
+                        <input type="text" id="Name" class="form-control" required />
+                        <span id="NameError" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="GenderId">Gender</label>
+                        <select id="GenderId" class="form-control" required></select>
+                        <span id="GenderIdError" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="StateId">State</label>
+                        <select id="StateId" class="form-control" required></select>
+                        <span id="StateIdError" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="DistrictId">District</label>
+                        <select id="DistrictId" class="form-control" required></select>
+                        <span id="DistrictIdError" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Populate dropdowns for create modal
+            function populateDropdowns() {
+                $.ajax({
+                    url: '@Url.Action("GetDropdowns")',
+                    type: 'GET',
+                    success: function (data) {
+                        $('#GenderId').html(data.genders);
+                        $('#StateId').html(data.states);
+                    }
+                });
+            }
+
+            populateDropdowns();
+
+            $('#StateId').change(function () {
+                var stateId = $(this).val();
+                $.ajax({
+                    url: '@Url.Action("GetDistrictsByState")',
+                    type: 'GET',
+                    data: { stateId: stateId },
+                    success: function (data) {
+                        $('#DistrictId').html(data.districts);
+                    }
+                });
+            });
+
+            $('#createForm').submit(function (e) {
+                e.preventDefault();
+
+                var customerData = {
+                    Name: $('#Name').val(),
+                    GenderId: $('#GenderId').val(),
+                    StateId: $('#StateId').val(),
+                    DistrictId: $('#DistrictId').val()
+                };
+
+                $.ajax({
+                    url: '@Url.Action("Create")',
+                    type: 'POST',
+                    data: customerData,
+                    success: function (result) {
+                        if (result.success) {
+                            $('#createModal').modal('hide');
+                            location.reload();
+                        } else {
+                            // Display validation errors
+                            $('#NameError').text(result.errors.Name || '');
+                            $('#GenderIdError').text(result.errors.GenderId || '');
+                            $('#StateIdError').text(result.errors.StateId || '');
+                            $('#DistrictIdError').text(result.errors.DistrictId || '');
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+}
